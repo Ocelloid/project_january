@@ -13,6 +13,7 @@
 - https://blendermarket.com/products/pbg-2
 - https://www.youtube.com/watch?v=inNJNwl8bGg&ab_channel=JasperStocker
 - https://quaternius.com/
+- https://www.youtube.com/@Imphenzia/videos
 
 ## MVP
 
