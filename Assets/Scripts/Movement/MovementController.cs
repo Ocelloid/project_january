@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using static GameInput;
 using UnityEngine.AI;
+using UnityEngine.EventSystems;
 
 namespace DapperDino.Movement {
     [RequireComponent(typeof(CharacterController))]
@@ -39,7 +40,8 @@ namespace DapperDino.Movement {
         }
         private void GameInput_OnMoveByMouseAction(object sender, OnMoveByMouseEventArgs e) {
             RaycastHit hit;
-            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 100, clickableLayers)) {
+            bool isOverUI = EventSystem.current.IsPointerOverGameObject();
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 100, clickableLayers) && !isOverUI) {
                 navMeshAgent.destination = hit.point;
                 if (clickEffect != null) {
                     Instantiate(clickEffect, hit.point += new Vector3(0f, 0.1f, 0f), clickEffect.transform.rotation);
