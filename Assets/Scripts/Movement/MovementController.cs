@@ -14,7 +14,11 @@ namespace DapperDino.Movement {
         [SerializeField] private GameInput input;
         [SerializeField] ParticleSystem clickEffect;
         [SerializeField] LayerMask clickableLayers;
+        [SerializeField] private float rotationSpeed = 10f;
+        [SerializeField] private float playerRadius = .7f;
+        [SerializeField] private float playerHeight = 2f;
         private NavMeshAgent navMeshAgent;
+        private bool isWalking;
 
         private CharacterController controller = null;
         private Animator animator = null;
@@ -44,36 +48,72 @@ namespace DapperDino.Movement {
         }
 
         private void Update() {
+            FaceTarget();
             Move();
         }
 
+        private void FaceTarget() {
+            if (navMeshAgent.destination != Vector3.zero) {
+                Vector3 direction = navMeshAgent.destination - transform.position;
+                transform.forward = Vector3.Slerp(transform.forward, direction, rotationSpeed * Time.deltaTime);
+            }
+        }
+
         private void Move() {
-            Vector2 movementInput = new Vector2(
-                Input.GetAxisRaw("Horizontal"),
-                Input.GetAxisRaw("Vertical")
-            ).normalized;
+            Vector2 inputVector = input.GetNormalizedMovementVector();
+            Vector3 direction = new Vector3(inputVector.x, 0f, inputVector.y);
 
-            Vector3 forward = mainCameraTransform.forward;
-            Vector3 right = mainCameraTransform.right;
-
-            forward.y = 0f;
-            right.y = 0f;
-
-            forward.Normalize();
-            right.Normalize();
-
-            Vector3 desiredMoveDirection = (forward * movementInput.y + right * movementInput.x).normalized;
-
-            if (desiredMoveDirection != Vector3.zero) {
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(desiredMoveDirection), 0.1f);
+            if (direction != Vector3.zero) {
+                navMeshAgent.ResetPath();
             }
 
-            float targetSpeed = movementSpeed * movementInput.magnitude;
-            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
+            float moveDistance = Time.deltaTime * movementSpeed;
 
-            controller.Move(desiredMoveDirection * currentSpeed * Time.deltaTime);
+            bool canMove = !Physics.CapsuleCast(
+                transform.position,
+                transform.position + Vector3.up * playerHeight,
+                playerRadius,
+                direction,
+                moveDistance
+            );
+            if (!canMove) {
+                Vector3 dirX = new Vector3(direction.x, 0f, 0f).normalized;
+                canMove = direction.x != 0 && !Physics.CapsuleCast(
+                    transform.position,
+                    transform.position + Vector3.up * playerHeight,
+                    playerRadius,
+                    dirX,
+                    moveDistance
+                );
+                if (canMove) {
+                    direction = dirX;
+                } else {
+                    Vector3 dirZ = new Vector3(0f, 0f, direction.z).normalized;
+                    canMove = direction.z != 0 && !Physics.CapsuleCast(
+                        transform.position,
+                        transform.position + Vector3.up * playerHeight,
+                        playerRadius,
+                        dirZ,
+                        moveDistance
+                    );
+                    if (canMove) {
+                        direction = dirZ;
+                    }
+                }
+            }
 
-            animator.SetFloat(hashSpeedPercentage, 0.5f * movementInput.magnitude, speedSmoothTime, Time.deltaTime);
+            if (canMove) {
+                transform.position += direction * moveDistance;
+            }
+
+            isWalking = direction != Vector3.zero;
+
+            transform.forward = Vector3.Slerp(transform.forward, direction, rotationSpeed * Time.deltaTime);
+            if (inputVector.magnitude > 0f) {
+                animator.SetFloat(hashSpeedPercentage, 0.5f * inputVector.magnitude, speedSmoothTime, Time.deltaTime);
+            } else {
+                animator.SetFloat(hashSpeedPercentage, 0.25f * navMeshAgent.desiredVelocity.magnitude, speedSmoothTime, Time.deltaTime);
+            }
         }
     }
 }
